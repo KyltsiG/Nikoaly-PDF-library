@@ -16,13 +16,8 @@ def get_chroma_collection():
     )
 
 
-def chunk_text(text: str, chunk_size: int = 200, overlap: int = 30) -> list[str]:
-    """
-    Split text into smaller overlapping word-based chunks.
-    Smaller chunks = more precise semantic matches.
-    chunk_size: number of words per chunk
-    overlap: number of words shared between consecutive chunks
-    """
+def chunk_page(text: str, chunk_size: int = 200, overlap: int = 30) -> list[str]:
+    """Split a single page's text into overlapping word-based chunks."""
     if not text or not text.strip():
         return []
 
@@ -40,43 +35,52 @@ def chunk_text(text: str, chunk_size: int = 200, overlap: int = 30) -> list[str]
     return chunks
 
 
-def embed_pdf(pdf_id: int, text: str, title: str) -> int:
+def embed_pdf(pdf_id: int, pages: list[dict], title: str) -> int:
     """
-    Chunk the PDF text, embed each chunk via Ollama,
-    and store in ChromaDB. Returns number of chunks stored.
+    Chunk each page's text, embed each chunk via Ollama,
+    and store in ChromaDB with page number in metadata.
+    Returns number of chunks stored.
+
+    pages: list of { page_number: int, text: str }
     """
     collection = get_chroma_collection()
-    chunks = chunk_text(text)
-
-    if not chunks:
-        return 0
 
     ids = []
     embeddings = []
     documents = []
     metadatas = []
 
-    for i, chunk in enumerate(chunks):
-        response = ollama.embeddings(model="nomic-embed-text", prompt=chunk)
-        embedding = response["embedding"]
+    chunk_counter = 0
 
-        ids.append(f"{pdf_id}_{i}")
-        embeddings.append(embedding)
-        documents.append(chunk)
-        metadatas.append({
-            "pdf_id": pdf_id,
-            "title": title,
-            "chunk_index": i,
-        })
+    for page in pages:
+        page_number = page["page_number"]
+        page_text = page["text"]
+        chunks = chunk_page(page_text)
 
-    collection.add(
-        ids=ids,
-        embeddings=embeddings,
-        documents=documents,
-        metadatas=metadatas,
-    )
+        for chunk in chunks:
+            response = ollama.embeddings(model="nomic-embed-text", prompt=chunk)
+            embedding = response["embedding"]
 
-    return len(chunks)
+            ids.append(f"{pdf_id}_{chunk_counter}")
+            embeddings.append(embedding)
+            documents.append(chunk)
+            metadatas.append({
+                "pdf_id": pdf_id,
+                "title": title,
+                "page_number": page_number,
+                "chunk_index": chunk_counter,
+            })
+            chunk_counter += 1
+
+    if ids:
+        collection.add(
+            ids=ids,
+            embeddings=embeddings,
+            documents=documents,
+            metadatas=metadatas,
+        )
+
+    return chunk_counter
 
 
 def delete_embeddings(pdf_id: int):
@@ -90,11 +94,10 @@ def delete_embeddings(pdf_id: int):
 def semantic_search(query: str, n_results: int = 5) -> list[dict]:
     """
     Embed the query and find the most similar chunks in ChromaDB.
-    Returns a list of matching chunks with metadata.
+    Returns a list of matching chunks with metadata including page number.
     """
     collection = get_chroma_collection()
 
-    # Check if collection has any data
     if collection.count() == 0:
         return []
 
