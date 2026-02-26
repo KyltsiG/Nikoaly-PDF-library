@@ -1,0 +1,39 @@
+# Personal data — never push
+storage/pdfs/
+storage/library.db
+storage/chroma/
+
+# Keep the storage folder structure but not the contents
+!storage/.gitkeep
+!storage/pdfs/.gitkeep
+
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+
+# Environment files
+.env
+.env.local
+.env.*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp

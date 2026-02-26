@@ -1,0 +1,40 @@
+.mode-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 4px;
+  width: fit-content;
+}
+
+.mode-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  padding: 6px 14px;
+  border-radius: var(--radius);
+  color: var(--text-secondary);
+  background: none;
+  transition: background var(--transition), color var(--transition);
+  white-space: nowrap;
+}
+
+.mode-btn:hover {
+  background: var(--surface-raised);
+  color: var(--text-primary);
+}
+
+.mode-btn.active {
+  background: var(--accent);
+  color: white;
+  font-weight: 500;
+}
+
+.mode-icon {
+  font-size: 14px;
+  line-height: 1;
+  opacity: 0.8;
+}

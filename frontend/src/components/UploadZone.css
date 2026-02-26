@@ -1,0 +1,87 @@
+.upload-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.upload-zone {
+  margin: 0 100px;
+  border: 1.5px dashed var(--border-strong);
+  border-radius: var(--radius-lg);
+  padding: 32px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition);
+  background: var(--surface);
+  user-select: none;
+}
+
+.upload-zone:hover {
+  background: var(--accent-light);
+  border-color: var(--accent);
+}
+
+.upload-zone.dragging {
+  background: var(--accent-light);
+  border-color: var(--accent);
+  border-style: solid;
+}
+
+.upload-zone.uploading {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.upload-icon {
+  font-size: 22px;
+  color: var(--text-muted);
+  line-height: 1;
+  font-weight: 300;
+}
+
+.upload-label {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.upload-link {
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.upload-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.upload-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.upload-message {
+  font-size: 13px;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+}
+
+.upload-message.success {
+  background: var(--accent-light);
+  color: var(--accent);
+}
+
+.upload-message.error {
+  background: var(--danger-light);
+  color: var(--danger);
+}
