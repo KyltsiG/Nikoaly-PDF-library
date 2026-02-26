@@ -5,7 +5,10 @@
 
 
 # Open the API documentation in the default web browser
-Start-Process "http://127.0.0.1:8000/docs"
+
+
 
 # Start the server
 python -m uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
+
+

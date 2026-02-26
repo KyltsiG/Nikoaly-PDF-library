@@ -1,5 +1,7 @@
+from pathlib import Path
 from sqlmodel import Session, select
 from backend.models.pdf import PDF
+from backend.services.pdf_parser import extract_text_by_page
 
 
 def count_matches(text: str, query: str) -> int:
@@ -9,10 +11,30 @@ def count_matches(text: str, query: str) -> int:
     return text.lower().count(query.lower())
 
 
+def find_match_page(file_path: str, query: str) -> int | None:
+    """
+    Find the first page number (1-indexed) where the query appears.
+    Returns None if not found or file doesn't exist.
+    """
+    path = Path(file_path)
+    if not path.exists():
+        return None
+
+    try:
+        pages, _ = extract_text_by_page(path)
+        lower_query = query.lower()
+        for page in pages:
+            if lower_query in page["text"].lower():
+                return page["page_number"]
+    except Exception:
+        return None
+
+    return None
+
+
 def extract_snippet(text: str, query: str, context_chars: int = 200) -> str:
     """
     Find the first occurrence of query in text and return a surrounding snippet.
-    Returns empty string if not found.
     """
     if not text:
         return ""
@@ -40,7 +62,7 @@ def extract_snippet(text: str, query: str, context_chars: int = 200) -> str:
 def search_pdfs(session: Session, query: str) -> list[dict]:
     """
     Search PDFs by title or extracted text.
-    Returns results sorted by number of matches (most relevant first).
+    Returns results sorted by number of matches, with page number of first match.
     """
     if not query or not query.strip():
         return []
@@ -61,6 +83,11 @@ def search_pdfs(session: Session, query: str) -> list[dict]:
 
         snippet = extract_snippet(pdf.extracted_text or "", query)
 
+        
+        page_number = None
+        if text_matches > 0:
+            page_number = find_match_page(pdf.file_path, query)
+
         results.append({
             "id": pdf.id,
             "title": pdf.title,
@@ -71,9 +98,8 @@ def search_pdfs(session: Session, query: str) -> list[dict]:
             "uploaded_at": pdf.uploaded_at,
             "snippet": snippet,
             "matches": total_matches,
+            "match_page": page_number,
         })
 
-    # Sort by matches descending — most relevant first
     results.sort(key=lambda r: r["matches"], reverse=True)
-
     return results

@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, Query
-from sqlmodel import Session, select
+from sqlmodel import Session
 from backend.db.database import get_session
 from backend.services.embedding_service import semantic_search, get_chroma_collection
 from backend.services.qa_service import answer_question
@@ -18,6 +18,8 @@ def semantic_search_route(
     if not matches:
         return {"query": q, "count": 0, "results": []}
 
+    # Group by PDF, keep best match per PDF (lowest distance)
+    # Also track the page number of the best match
     pdf_best: dict[int, dict] = {}
     for match in matches:
         pid = match["metadata"]["pdf_id"]
@@ -29,6 +31,9 @@ def semantic_search_route(
         pdf = session.get(PDF, pid)
         if not pdf:
             continue
+
+        page_number = match["metadata"].get("page_number")
+
         results.append({
             "id": pdf.id,
             "title": pdf.title,
@@ -39,6 +44,7 @@ def semantic_search_route(
             "uploaded_at": pdf.uploaded_at,
             "snippet": match["chunk"][:400] + "..." if len(match["chunk"]) > 400 else match["chunk"],
             "similarity": round((1 - match["distance"]) * 100, 1),
+            "match_page": page_number,
         })
 
     results.sort(key=lambda r: r["similarity"], reverse=True)
@@ -60,14 +66,10 @@ def ask_question(
 
 @router.get("/debug")
 def debug_chroma():
-    """
-    Debug endpoint — shows what's stored in ChromaDB.
-    Hit this at http://localhost:8000/api/semantic/debug
-    """
+    """Debug endpoint — shows what's stored in ChromaDB."""
     collection = get_chroma_collection()
     count = collection.count()
 
-    # Get first 5 chunks to inspect
     sample = collection.get(limit=5, include=["documents", "metadatas"])
 
     return {

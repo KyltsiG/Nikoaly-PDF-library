@@ -55,12 +55,31 @@ export default function SearchResultCard({ result, query, onDelete }) {
             </h3>
             <div className="result-card-info-row">
               <span className="result-card-info">
-                {result.matches} match{result.matches !== 1 ? "es" : ""}
+
+                {result.matches !== undefined && (
+                  <span className="result-card-matches">
+                    {result.matches} match{result.matches !== 1 ? "es" : ""}
+                  </span>
+                )}
+                {result.similarity !== undefined && (
+                  <span className="result-card-similarity">
+                    {result.similarity}% match
+                  </span>
+                )}
                 <span className="result-dot">·</span>
                 {result.page_count} page{result.page_count !== 1 ? "s" : ""}
                 <span className="result-dot">·</span>
                 {formatBytes(result.file_size_bytes)}
+                {result.match_page && (
+                  <>
+                    <span className="result-dot">·</span>
+                    <span className="result-match-page">
+                      found on p. {result.match_page}
+                    </span>
+                  </>
+                )}
               </span>
+            
             </div>
           </div>
         </div>

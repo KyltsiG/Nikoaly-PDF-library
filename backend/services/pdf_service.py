@@ -2,7 +2,7 @@ import shutil
 from pathlib import Path
 from sqlmodel import Session, select
 from backend.models.pdf import PDF
-from backend.services.pdf_parser import extract_text, get_title_from_pdf
+from backend.services.pdf_parser import extract_text, extract_text_by_page, get_title_from_pdf
 from backend.services.embedding_service import embed_pdf, delete_embeddings
 from backend.core.config import PDF_STORAGE_DIR
 
@@ -20,9 +20,14 @@ def ingest_pdf(session: Session, file_path: Path, original_filename: str) -> PDF
     Full ingestion pipeline:
     1. Extract text and metadata
     2. Store in SQLite
-    3. Embed chunks into ChromaDB
+    3. Embed chunks into ChromaDB with page numbers
     """
+    # Extract full text for keyword search storage
     text, page_count = extract_text(file_path)
+
+    # Extract per-page text for embeddings
+    pages, _ = extract_text_by_page(file_path)
+
     title = get_title_from_pdf(file_path, original_filename)
     file_size = file_path.stat().st_size
 
@@ -38,9 +43,9 @@ def ingest_pdf(session: Session, file_path: Path, original_filename: str) -> PDF
     session.commit()
     session.refresh(pdf)
 
-    # Embed into ChromaDB after we have the ID
-    if text:
-        embed_pdf(pdf.id, text, title)
+    # Embed into ChromaDB with page-level metadata
+    if pages:
+        embed_pdf(pdf.id, pages, title)
 
     return pdf
 
@@ -58,10 +63,8 @@ def delete_pdf(session: Session, pdf_id: int) -> bool:
     if not pdf:
         return False
 
-    # Remove embeddings from ChromaDB
     delete_embeddings(pdf_id)
 
-    # Remove file from disk
     file = Path(pdf.file_path)
     if file.exists():
         file.unlink()
