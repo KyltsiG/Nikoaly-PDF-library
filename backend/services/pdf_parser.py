@@ -3,10 +3,7 @@ import fitz  # PyMuPDF
 
 
 def extract_text(file_path: Path) -> tuple[str, int]:
-    """
-    Extract full text and page count from a PDF.
-    Returns (extracted_text, page_count).
-    """
+    """Extract all text from a PDF as one string, plus the page count."""
     doc = fitz.open(str(file_path))
     page_count = doc.page_count
 
@@ -21,9 +18,9 @@ def extract_text(file_path: Path) -> tuple[str, int]:
 
 def extract_text_by_page(file_path: Path) -> tuple[list[dict], int]:
     """
-    Extract text per page from a PDF.
-    Returns (pages, page_count) where pages is a list of
-    { page_number: int (1-indexed), text: str }
+    Extract text per page so embeddings can be tied to a specific page number.
+    Skips empty pages — they add noise without providing searchable content.
+    Returns a list of { page_number, text } dicts (1-indexed) and total page count.
     """
     doc = fitz.open(str(file_path))
     page_count = doc.page_count
@@ -34,7 +31,7 @@ def extract_text_by_page(file_path: Path) -> tuple[list[dict], int]:
         text = page.get_text().strip()
         if text:
             pages.append({
-                "page_number": page_num + 1,  # 1-indexed for display
+                "page_number": page_num + 1,
                 "text": text,
             })
 
@@ -43,5 +40,9 @@ def extract_text_by_page(file_path: Path) -> tuple[list[dict], int]:
 
 
 def get_title_from_pdf(file_path: Path, fallback_filename: str) -> str:
-    #Extracts the PDF file name as the title, replaces underscores and hyphens with spaces.
+    """
+    Derive a display title from the original filename.
+    PDF metadata titles are often inconsistent or missing entirely,
+    so the filename is always used for predictable display.
+    """
     return Path(fallback_filename).stem.replace("_", " ").replace("-", " ").title()

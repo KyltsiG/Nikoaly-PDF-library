@@ -9,12 +9,11 @@ function formatBytes(bytes) {
 
 function highlightMatch(text, query) {
   if (!text || !query) return text;
+  // Escape special regex characters in the query before building the pattern
   const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi");
   const parts = text.split(regex);
   return parts.map((part, i) =>
-    regex.test(part)
-      ? <mark key={i} className="search-highlight">{part}</mark>
-      : part
+    regex.test(part) ? <mark key={i} className="search-highlight">{part}</mark> : part
   );
 }
 
@@ -26,9 +25,7 @@ export default function SearchResultCard({ result, query, onDelete }) {
   const handleDelete = async () => {
     setDeleting(true);
     try {
-      await fetch(`http://127.0.0.1:8000/api/pdfs/${result.id}`, {
-        method: "DELETE",
-      });
+      await fetch(`http://127.0.0.1:8000/api/pdfs/${result.id}`, { method: "DELETE" });
       onDelete();
     } catch {
       setDeleting(false);
@@ -55,7 +52,18 @@ export default function SearchResultCard({ result, query, onDelete }) {
             </h3>
             <div className="result-card-info-row">
               <span className="result-card-info">
-
+                {result.page_count} page{result.page_count !== 1 ? "s" : ""}
+                <span className="result-dot">·</span>
+                {formatBytes(result.file_size_bytes)}
+                {result.match_page && (
+                  <>
+                    <span className="result-dot">·</span>
+                    <span className="result-match-page">p. {result.match_page}</span>
+                  </>
+                )}
+              </span>
+              <div className="result-card-badges">
+                {/* Show match count for keyword results, similarity % for semantic */}
                 {result.matches !== undefined && (
                   <span className="result-card-matches">
                     {result.matches} match{result.matches !== 1 ? "es" : ""}
@@ -66,20 +74,7 @@ export default function SearchResultCard({ result, query, onDelete }) {
                     {result.similarity}% match
                   </span>
                 )}
-                <span className="result-dot">·</span>
-                {result.page_count} page{result.page_count !== 1 ? "s" : ""}
-                <span className="result-dot">·</span>
-                {formatBytes(result.file_size_bytes)}
-                {result.match_page && (
-                  <>
-                    <span className="result-dot">·</span>
-                    <span className="result-match-page">
-                      found on p. {result.match_page}
-                    </span>
-                  </>
-                )}
-              </span>
-            
+              </div>
             </div>
           </div>
         </div>
@@ -97,26 +92,12 @@ export default function SearchResultCard({ result, query, onDelete }) {
               <button className="result-card-btn danger" onClick={handleDelete} disabled={deleting}>
                 {deleting ? "..." : "Yes"}
               </button>
-              <button className="result-card-btn" onClick={() => setConfirming(false)}>
-                No
-              </button>
+              <button className="result-card-btn" onClick={() => setConfirming(false)}>No</button>
             </div>
           ) : (
             <div className="result-card-btns">
-              <button
-                className="result-card-action-btn"
-                onClick={handleDownload}
-                title="Download"
-              >
-                ↓
-              </button>
-              <button
-                className="result-card-action-btn delete"
-                onClick={() => setConfirming(true)}
-                title="Delete"
-              >
-                ✕
-              </button>
+              <button className="result-card-action-btn" onClick={handleDownload} title="Download">↓</button>
+              <button className="result-card-action-btn delete" onClick={() => setConfirming(true)} title="Delete">✕</button>
             </div>
           )}
         </div>

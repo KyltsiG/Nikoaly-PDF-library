@@ -18,8 +18,8 @@ def semantic_search_route(
     if not matches:
         return {"query": q, "count": 0, "results": []}
 
-    # Group by PDF, keep best match per PDF (lowest distance)
-    # Also track the page number of the best match
+    # Multiple chunks from the same PDF may match — keep only the best one
+    # (lowest distance = most similar) so each PDF appears once in results
     pdf_best: dict[int, dict] = {}
     for match in matches:
         pid = match["metadata"]["pdf_id"]
@@ -32,8 +32,6 @@ def semantic_search_route(
         if not pdf:
             continue
 
-        page_number = match["metadata"].get("page_number")
-
         results.append({
             "id": pdf.id,
             "title": pdf.title,
@@ -43,8 +41,9 @@ def semantic_search_route(
             "file_size_bytes": pdf.file_size_bytes,
             "uploaded_at": pdf.uploaded_at,
             "snippet": match["chunk"][:400] + "..." if len(match["chunk"]) > 400 else match["chunk"],
+            # Convert cosine distance to a 0–100% similarity score for display
             "similarity": round((1 - match["distance"]) * 100, 1),
-            "match_page": page_number,
+            "match_page": match["metadata"].get("page_number"),
         })
 
     results.sort(key=lambda r: r["similarity"], reverse=True)
@@ -60,20 +59,17 @@ def ask_question(
     if not question:
         return {"answer": "Please provide a question.", "sources": []}
 
-    result = answer_question(session, question)
-    return result
+    return answer_question(session, question)
 
 
 @router.get("/debug")
 def debug_chroma():
-    """Debug endpoint — shows what's stored in ChromaDB."""
+    """Shows what's currently stored in ChromaDB — useful for verifying embeddings."""
     collection = get_chroma_collection()
-    count = collection.count()
-
     sample = collection.get(limit=5, include=["documents", "metadatas"])
 
     return {
-        "total_chunks": count,
+        "total_chunks": collection.count(),
         "sample_chunks": [
             {
                 "id": sample["ids"][i],

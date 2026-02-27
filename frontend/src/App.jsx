@@ -3,7 +3,6 @@ import Library from "./pages/Library";
 import "./App.css";
 
 function App() {
-
   const [pdfs, setPdfs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -21,6 +20,8 @@ function App() {
     }
   };
 
+  // Fetch once on mount. fetchPdfs is also passed down as onRefresh so any
+  // child component (upload, delete) can trigger a re-fetch after a mutation.
   useEffect(() => {
     fetchPdfs();
   }, []);

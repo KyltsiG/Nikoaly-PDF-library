@@ -1,5 +1,6 @@
 import "./SortBar.css";
 
+// Stateless — parent owns sortBy and handles changes
 export default function SortBar({ sortBy, onChange, options }) {
   return (
     <div className="sort-bar">

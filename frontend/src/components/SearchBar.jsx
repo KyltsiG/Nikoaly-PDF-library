@@ -25,6 +25,7 @@ export default function SearchBar({ onSearch, onClear, isSearching, mode }) {
   const handleClear = () => {
     setValue("");
     onClear();
+    // Return focus so the user can type a new query without clicking
     inputRef.current.focus();
   };
 
@@ -42,12 +43,7 @@ export default function SearchBar({ onSearch, onClear, isSearching, mode }) {
         spellCheck="false"
       />
       {value && (
-        <button
-          type="button"
-          className="search-clear"
-          onClick={handleClear}
-          title="Clear"
-        >
+        <button type="button" className="search-clear" onClick={handleClear} title="Clear">
           ✕
         </button>
       )}

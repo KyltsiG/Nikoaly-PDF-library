@@ -5,11 +5,12 @@ from backend.core.config import CHROMA_DIR
 
 
 def get_chroma_collection():
-    """Connect to ChromaDB and return the PDF chunks collection."""
     client = chromadb.PersistentClient(
         path=str(CHROMA_DIR),
         settings=Settings(anonymized_telemetry=False),
     )
+    # cosine distance is standard for text embeddings — measures angle between
+    # vectors rather than magnitude, so text length doesn't affect similarity
     return client.get_or_create_collection(
         name="pdf_chunks",
         metadata={"hnsw:space": "cosine"},
@@ -17,7 +18,11 @@ def get_chroma_collection():
 
 
 def chunk_page(text: str, chunk_size: int = 200, overlap: int = 30) -> list[str]:
-    """Split a single page's text into overlapping word-based chunks."""
+    """
+    Split a page's text into overlapping word-based chunks.
+    Overlap prevents a sentence that falls on a chunk boundary from being
+    split across two chunks where neither contains the full sentence.
+    """
     if not text or not text.strip():
         return []
 
@@ -37,11 +42,9 @@ def chunk_page(text: str, chunk_size: int = 200, overlap: int = 30) -> list[str]
 
 def embed_pdf(pdf_id: int, pages: list[dict], title: str) -> int:
     """
-    Chunk each page's text, embed each chunk via Ollama,
-    and store in ChromaDB with page number in metadata.
-    Returns number of chunks stored.
-
-    pages: list of { page_number: int, text: str }
+    Embed all pages of a PDF into ChromaDB.
+    Each chunk stores its source page number so search results can
+    point the user to the exact page where the match was found.
     """
     collection = get_chroma_collection()
 
@@ -49,20 +52,17 @@ def embed_pdf(pdf_id: int, pages: list[dict], title: str) -> int:
     embeddings = []
     documents = []
     metadatas = []
-
     chunk_counter = 0
 
     for page in pages:
         page_number = page["page_number"]
-        page_text = page["text"]
-        chunks = chunk_page(page_text)
+        chunks = chunk_page(page["text"])
 
         for chunk in chunks:
             response = ollama.embeddings(model="nomic-embed-text", prompt=chunk)
-            embedding = response["embedding"]
 
             ids.append(f"{pdf_id}_{chunk_counter}")
-            embeddings.append(embedding)
+            embeddings.append(response["embedding"])
             documents.append(chunk)
             metadatas.append({
                 "pdf_id": pdf_id,
@@ -73,18 +73,13 @@ def embed_pdf(pdf_id: int, pages: list[dict], title: str) -> int:
             chunk_counter += 1
 
     if ids:
-        collection.add(
-            ids=ids,
-            embeddings=embeddings,
-            documents=documents,
-            metadatas=metadatas,
-        )
+        collection.add(ids=ids, embeddings=embeddings, documents=documents, metadatas=metadatas)
 
     return chunk_counter
 
 
 def delete_embeddings(pdf_id: int):
-    """Remove all chunks for a given PDF from ChromaDB."""
+    """Remove all chunks belonging to a PDF — called when the PDF is deleted."""
     collection = get_chroma_collection()
     results = collection.get(where={"pdf_id": pdf_id})
     if results["ids"]:
@@ -93,8 +88,8 @@ def delete_embeddings(pdf_id: int):
 
 def semantic_search(query: str, n_results: int = 5) -> list[dict]:
     """
-    Embed the query and find the most similar chunks in ChromaDB.
-    Returns a list of matching chunks with metadata including page number.
+    Embed the query and find the closest chunk vectors in ChromaDB.
+    Uses HNSW approximate nearest-neighbour search — fast even at scale.
     """
     collection = get_chroma_collection()
 
@@ -102,12 +97,12 @@ def semantic_search(query: str, n_results: int = 5) -> list[dict]:
         return []
 
     response = ollama.embeddings(model="nomic-embed-text", prompt=query)
-    query_embedding = response["embedding"]
 
+    # Cap n_results to the actual collection size to avoid ChromaDB errors
     actual_n = min(n_results, collection.count())
 
     results = collection.query(
-        query_embeddings=[query_embedding],
+        query_embeddings=[response["embedding"]],
         n_results=actual_n,
         include=["documents", "metadatas", "distances"],
     )

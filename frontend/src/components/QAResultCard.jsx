@@ -1,5 +1,6 @@
 import "./QAResultCard.css";
-// Component to display the AI-generated answer and its source PDFs after a question is asked.
+
+// Pure display component — receives the answer and source list from Library.jsx
 export default function QAResultCard({ answer, sources }) {
   return (
     <div className="qa-card">
@@ -8,6 +9,7 @@ export default function QAResultCard({ answer, sources }) {
         <span className="qa-card-label">AI Answer</span>
       </div>
 
+      {/* pre-wrap preserves line breaks in the model's response */}
       <p className="qa-card-answer">{answer}</p>
 
       {sources && sources.length > 0 && (

@@ -5,14 +5,10 @@ from backend.services.embedding_service import semantic_search
 
 def answer_question(session: Session, question: str) -> dict:
     """
-    RAG pipeline:
-    1. Find the most relevant chunks for the question
-    2. Filter out low-quality matches by distance threshold
-    3. Build a strict context prompt
-    4. Ask Llama 3.2 to answer using only that context
-    5. Return answer + source citations
+    RAG (Retrieval-Augmented Generation) pipeline.
+    Retrieves the most relevant document chunks, then asks the LLM to answer
+    using only that context — keeping the response grounded in the user's library.
     """
-    # Step 1 — retrieve top 3 most relevant chunks
     matches = semantic_search(question, n_results=3)
 
     if not matches:
@@ -21,12 +17,13 @@ def answer_question(session: Session, question: str) -> dict:
             "sources": [],
         }
 
-    # Step 2 — filter out weak matches (distance > 0.5 means low similarity)
+    # Filter out weak matches — distance > 0.5 means low semantic similarity
+    # and including them tends to confuse the model with irrelevant content
     strong_matches = [m for m in matches if m["distance"] < 0.5]
     if not strong_matches:
-        strong_matches = matches[:2]  # fallback to top 2 if all are weak
+        # Fall back to top 2 rather than returning nothing
+        strong_matches = matches[:2]
 
-    # Step 3 — build context, track which PDFs were used
     context_parts = []
     seen_pdf_ids = []
     sources = []
@@ -34,20 +31,18 @@ def answer_question(session: Session, question: str) -> dict:
     for match in strong_matches:
         pdf_id = match["metadata"]["pdf_id"]
         title = match["metadata"]["title"]
-        chunk = match["chunk"]
 
-        context_parts.append(f'Document: "{title}"\n{chunk}')
+        # Label each excerpt so the LLM knows which document it came from
+        context_parts.append(f'Document: "{title}"\n{match["chunk"]}')
 
         if pdf_id not in seen_pdf_ids:
             seen_pdf_ids.append(pdf_id)
-            sources.append({
-                "pdf_id": pdf_id,
-                "title": title,
-            })
+            sources.append({"pdf_id": pdf_id, "title": title})
 
     context = "\n\n---\n\n".join(context_parts)
 
-    # Step 4 — strict prompt that forces the model to stay on topic
+    # Explicit rules in the prompt reduce hallucination — the model is
+    # instructed to admit when it doesn't know rather than guess
     prompt = f"""You are a precise document assistant. Your only job is to answer the question using ONLY the document excerpts provided below.
 
 Rules:
@@ -64,18 +59,15 @@ Question: {question}
 
 Answer:"""
 
-    # Step 5 — call Llama 3.2
+    # Low temperature keeps responses focused and deterministic —
+    # high temperature would produce more creative but less accurate answers
     response = ollama.chat(
         model="llama3.2",
         messages=[{"role": "user", "content": prompt}],
-        options={
-            "temperature": 0.1,  # low temperature = more focused, less creative
-        }
+        options={"temperature": 0.1},
     )
 
-    answer = response["message"]["content"].strip()
-
     return {
-        "answer": answer,
+        "answer": response["message"]["content"].strip(),
         "sources": sources,
     }

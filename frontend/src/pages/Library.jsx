@@ -11,20 +11,17 @@ import { LIBRARY_SORT_OPTIONS, SEARCH_SORT_OPTIONS } from "../constants/sortOpti
 import "./Library.css";
 
 function sortItems(items, sortBy) {
+  // Spread to avoid mutating the original state array — sort() is in-place
   return [...items].sort((a, b) => {
     switch (sortBy) {
       case "relevance":
+        // Works for both keyword (matches) and semantic (similarity) results
         return (b.matches ?? b.similarity ?? 0) - (a.matches ?? a.similarity ?? 0);
-      case "date_desc":
-        return new Date(b.uploaded_at) - new Date(a.uploaded_at);
-      case "date_asc":
-        return new Date(a.uploaded_at) - new Date(b.uploaded_at);
-      case "name_asc":
-        return a.title.localeCompare(b.title);
-      case "name_desc":
-        return b.title.localeCompare(a.title);
-      default:
-        return 0;
+      case "date_desc": return new Date(b.uploaded_at) - new Date(a.uploaded_at);
+      case "date_asc":  return new Date(a.uploaded_at) - new Date(b.uploaded_at);
+      case "name_asc":  return a.title.localeCompare(b.title);
+      case "name_desc": return b.title.localeCompare(a.title);
+      default: return 0;
     }
   });
 }
@@ -40,11 +37,14 @@ export default function Library({ pdfs, loading, error, onRefresh }) {
   const [librarySortBy, setLibrarySortBy] = useState("date_desc");
   const [searchSortBy, setSearchSortBy] = useState("relevance");
 
-  const sortedPdfs = useMemo(() => sortItems(pdfs, librarySortBy), [pdfs, librarySortBy]);
-  const sortedResults = useMemo(() => sortItems(results, searchSortBy), [results, searchSortBy]);
+  // useMemo avoids re-sorting on every render — recalculates only when
+  // the source array or sort key actually changes
+  const sortedPdfs    = useMemo(() => sortItems(pdfs,    librarySortBy), [pdfs,    librarySortBy]);
+  const sortedResults = useMemo(() => sortItems(results, searchSortBy),  [results, searchSortBy]);
 
   const handleModeChange = (newMode) => {
     setSearchMode(newMode);
+    // Clear results when switching modes so stale results don't show
     handleClear();
   };
 
@@ -57,17 +57,13 @@ export default function Library({ pdfs, loading, error, onRefresh }) {
 
     try {
       if (searchMode === "keyword") {
-        const res = await fetch(
-          `http://127.0.0.1:8000/api/search/?q=${encodeURIComponent(q)}`
-        );
+        const res = await fetch(`http://127.0.0.1:8000/api/search/?q=${encodeURIComponent(q)}`);
         if (!res.ok) throw new Error("Search failed.");
         const data = await res.json();
         setResults(data.results);
 
       } else if (searchMode === "semantic") {
-        const res = await fetch(
-          `http://127.0.0.1:8000/api/semantic/search?q=${encodeURIComponent(q)}`
-        );
+        const res = await fetch(`http://127.0.0.1:8000/api/semantic/search?q=${encodeURIComponent(q)}`);
         if (!res.ok) throw new Error("Semantic search failed.");
         const data = await res.json();
         setResults(data.results);
@@ -79,8 +75,7 @@ export default function Library({ pdfs, loading, error, onRefresh }) {
           body: JSON.stringify({ question: q }),
         });
         if (!res.ok) throw new Error("Q&A failed.");
-        const data = await res.json();
-        setQaResult(data);
+        setQaResult(await res.json());
         setResults([]);
       }
 
@@ -101,7 +96,11 @@ export default function Library({ pdfs, loading, error, onRefresh }) {
     setSearchSortBy("relevance");
   };
 
+  // hasSearched stays true after the request completes, keeping results visible
+  // searching is only true while the request is in flight
   const isSearchMode = hasSearched || searching;
+
+  // Sort bar is irrelevant for Q&A — there's only one answer card
   const showSortBar = searchMode !== "qa" && results.length > 0 && !searching;
 
   return (
@@ -156,26 +155,15 @@ export default function Library({ pdfs, loading, error, onRefresh }) {
               </div>
 
               {showSortBar && (
-                <SortBar
-                  sortBy={searchSortBy}
-                  onChange={setSearchSortBy}
-                  options={SEARCH_SORT_OPTIONS}
-                />
+                <SortBar sortBy={searchSortBy} onChange={setSearchSortBy} options={SEARCH_SORT_OPTIONS} />
               )}
 
-              {searchError && (
-                <div className="library-error">{searchError}</div>
-              )}
+              {searchError && <div className="library-error">{searchError}</div>}
 
-              {/* Q&A result */}
               {!searching && searchMode === "qa" && qaResult && (
-                <QAResultCard
-                  answer={qaResult.answer}
-                  sources={qaResult.sources}
-                />
+                <QAResultCard answer={qaResult.answer} sources={qaResult.sources} />
               )}
 
-              {/* Keyword / semantic results */}
               {!searching && searchMode !== "qa" && results.length === 0 && !searchError && (
                 <div className="search-empty">
                   <p>No documents matched your search.</p>
@@ -206,19 +194,11 @@ export default function Library({ pdfs, loading, error, onRefresh }) {
                   Could not connect to server. Make sure the backend is running.
                 </div>
               )}
-              {loading && !error && (
-                <div className="library-loading">
-                  <div className="spinner" />
-                </div>
-              )}
+              {loading && !error && <div className="library-loading"><div className="spinner" /></div>}
               {!loading && !error && pdfs.length === 0 && <EmptyState />}
               {!loading && !error && pdfs.length > 0 && (
                 <>
-                  <SortBar
-                    sortBy={librarySortBy}
-                    onChange={setLibrarySortBy}
-                    options={LIBRARY_SORT_OPTIONS}
-                  />
+                  <SortBar sortBy={librarySortBy} onChange={setLibrarySortBy} options={LIBRARY_SORT_OPTIONS} />
                   <div className="pdf-grid">
                     {sortedPdfs.map((pdf) => (
                       <PDFCard key={pdf.id} pdf={pdf} onDelete={onRefresh} />

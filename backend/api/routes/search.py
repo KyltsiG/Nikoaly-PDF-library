@@ -8,12 +8,9 @@ router = APIRouter()
 
 @router.get("/")
 def search(
-    q: str = Query(..., min_length=1, description="Search query"),
+    q: str = Query(..., min_length=1),
     session: Session = Depends(get_session),
 ):
     results = search_pdfs(session, q)
-    return {
-        "query": q,
-        "count": len(results),
-        "results": results,
-    }
+    # Envelope format lets the frontend show result count without counting the array
+    return {"query": q, "count": len(results), "results": results}

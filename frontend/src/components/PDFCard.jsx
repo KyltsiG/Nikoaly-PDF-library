@@ -2,9 +2,6 @@ import { useState } from "react";
 import PreviewModal from "./PreviewModal";
 import "./PDFCard.css";
 
-// Component to display individual PDF details in the library, with options to preview, download, or delete.
-
-
 function formatBytes(bytes) {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
@@ -12,9 +9,7 @@ function formatBytes(bytes) {
 
 function formatDate(iso) {
   return new Date(iso).toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
+    day: "numeric", month: "short", year: "numeric",
   });
 }
 
@@ -23,26 +18,24 @@ export default function PDFCard({ pdf, onDelete }) {
   const [deleting, setDeleting] = useState(false);
   const [previewing, setPreviewing] = useState(false);
 
-  // Handles the deletion of a PDF, showing a confirmation prompt and then calling the API to delete the PDF from the library.
   const handleDelete = async () => {
     setDeleting(true);
     try {
-      await fetch(`http://127.0.0.1:8000/api/pdfs/${pdf.id}`, {
-        method: "DELETE",
-      });
+      await fetch(`http://127.0.0.1:8000/api/pdfs/${pdf.id}`, { method: "DELETE" });
       onDelete();
     } catch {
+      // Reset UI state so the user can try again
       setDeleting(false);
       setConfirming(false);
     }
   };
-  // Handles the download action by opening the PDF in a new browser tab, allowing the user to view or save the file.
+
   const handleDownload = (e) => {
+    // Stop click from bubbling up to the card's onClick which opens the preview
     e.stopPropagation();
     window.open(`http://127.0.0.1:8000/api/pdfs/${pdf.id}/download`, "_blank");
   };
 
-  // Renders the PDF card with its details and action buttons, and conditionally shows the preview modal when the user clicks on the card.
   return (
     <>
       <div
@@ -62,6 +55,7 @@ export default function PDFCard({ pdf, onDelete }) {
           </div>
         </div>
 
+        {/* Stop action clicks from triggering the card's preview open */}
         <div className="pdf-card-actions" onClick={(e) => e.stopPropagation()}>
           {confirming ? (
             <div className="pdf-card-confirm">
@@ -75,18 +69,10 @@ export default function PDFCard({ pdf, onDelete }) {
             </div>
           ) : (
             <div className="pdf-card-btns">
-              <button
-                className="pdf-card-action-btn"
-                onClick={handleDownload}
-                title="Download"
-              >
+              <button className="pdf-card-action-btn" onClick={handleDownload} title="Download">
                 ↓
               </button>
-              <button
-                className="pdf-card-action-btn delete"
-                onClick={() => setConfirming(true)}
-                title="Delete"
-              >
+              <button className="pdf-card-action-btn delete" onClick={() => setConfirming(true)} title="Delete">
                 ✕
               </button>
             </div>

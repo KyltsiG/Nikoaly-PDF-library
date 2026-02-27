@@ -6,6 +6,7 @@ const MODES = [
   { value: "qa",       label: "Ask AI",   icon: "?" },
 ];
 
+// Stateless toggle — parent owns the active mode and handles switching
 export default function SearchModeToggle({ mode, onChange }) {
   return (
     <div className="mode-toggle">

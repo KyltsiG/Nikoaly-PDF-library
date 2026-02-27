@@ -5,7 +5,6 @@ from backend.services.pdf_parser import extract_text_by_page
 
 
 def count_matches(text: str, query: str) -> int:
-    """Count how many times the query appears in the text."""
     if not text or not query:
         return 0
     return text.lower().count(query.lower())
@@ -13,8 +12,9 @@ def count_matches(text: str, query: str) -> int:
 
 def find_match_page(file_path: str, query: str) -> int | None:
     """
-    Find the first page number (1-indexed) where the query appears.
-    Returns None if not found or file doesn't exist.
+    Re-open the PDF to find which page the query first appears on.
+    Done at search time rather than stored at ingest time because queries
+    are unpredictable — we can't know in advance what to index per page.
     """
     path = Path(file_path)
     if not path.exists():
@@ -33,9 +33,7 @@ def find_match_page(file_path: str, query: str) -> int | None:
 
 
 def extract_snippet(text: str, query: str, context_chars: int = 200) -> str:
-    """
-    Find the first occurrence of query in text and return a surrounding snippet.
-    """
+    """Extract a window of text around the first occurrence of the query."""
     if not text:
         return ""
 
@@ -48,7 +46,6 @@ def extract_snippet(text: str, query: str, context_chars: int = 200) -> str:
 
     start = max(0, idx - context_chars)
     end = min(len(text), idx + len(query) + context_chars)
-
     snippet = text[start:end].strip()
 
     if start > 0:
@@ -61,8 +58,8 @@ def extract_snippet(text: str, query: str, context_chars: int = 200) -> str:
 
 def search_pdfs(session: Session, query: str) -> list[dict]:
     """
-    Search PDFs by title or extracted text.
-    Returns results sorted by number of matches, with page number of first match.
+    Keyword search across all PDFs. Counts matches in both title and body,
+    ranks by total match count so the most relevant document appears first.
     """
     if not query or not query.strip():
         return []
@@ -83,14 +80,15 @@ def search_pdfs(session: Session, query: str) -> list[dict]:
 
         snippet = extract_snippet(pdf.extracted_text or "", query)
 
-        
+        # Only scan for page number when there are body matches —
+        # a title-only match has no meaningful page to point to
         page_number = None
         if text_matches > 0:
             page_number = find_match_page(pdf.file_path, query)
 
         results.append({
             "id": pdf.id,
-            "title": pdf.title,
+            "title": pdf.filename,
             "filename": pdf.filename,
             "file_path": pdf.file_path,
             "page_count": pdf.page_count,

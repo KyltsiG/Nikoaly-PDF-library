@@ -31,7 +31,7 @@ export default function UploadZone({ onUploadSuccess }) {
       }
 
       const data = await res.json();
-      setMessage({ type: "success", text: `"${data.filename}" added to library.` });
+      setMessage({ type: "success", text: `"${data.title}" added to library.` });
       onUploadSuccess();
     } catch (err) {
       setMessage({ type: "error", text: err.message });
@@ -43,13 +43,12 @@ export default function UploadZone({ onUploadSuccess }) {
   const handleDrop = (e) => {
     e.preventDefault();
     setDragging(false);
-    const file = e.dataTransfer.files[0];
-    uploadFile(file);
+    uploadFile(e.dataTransfer.files[0]);
   };
 
   const handleFileInput = (e) => {
-    const file = e.target.files[0];
-    uploadFile(file);
+    uploadFile(e.target.files[0]);
+    // Reset the input so the same file can be re-uploaded if needed
     e.target.value = "";
   };
 
@@ -62,6 +61,7 @@ export default function UploadZone({ onUploadSuccess }) {
         onDragLeave={() => setDragging(false)}
         onDrop={handleDrop}
       >
+        {/* Hidden — triggered programmatically via inputRef */}
         <input
           ref={inputRef}
           type="file"
