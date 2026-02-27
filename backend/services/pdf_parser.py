@@ -43,16 +43,5 @@ def extract_text_by_page(file_path: Path) -> tuple[list[dict], int]:
 
 
 def get_title_from_pdf(file_path: Path, fallback_filename: str) -> str:
-    """
-    Try to read the PDF's built-in title metadata.
-    Falls back to the filename (without extension) if not found.
-    """
-    doc = fitz.open(str(file_path))
-    metadata = doc.metadata
-    doc.close()
-
-    title = metadata.get("title", "").strip()
-    if title:
-        return title
-
+    #Extracts the PDF file name as the title, replaces underscores and hyphens with spaces.
     return Path(fallback_filename).stem.replace("_", " ").replace("-", " ").title()

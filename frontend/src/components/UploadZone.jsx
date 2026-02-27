@@ -31,7 +31,7 @@ export default function UploadZone({ onUploadSuccess }) {
       }
 
       const data = await res.json();
-      setMessage({ type: "success", text: `"${data.title}" added to library.` });
+      setMessage({ type: "success", text: `"${data.filename}" added to library.` });
       onUploadSuccess();
     } catch (err) {
       setMessage({ type: "error", text: err.message });

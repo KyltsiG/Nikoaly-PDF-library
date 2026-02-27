@@ -1,5 +1,5 @@
 import "./QAResultCard.css";
-
+// Component to display the AI-generated answer and its source PDFs after a question is asked.
 export default function QAResultCard({ answer, sources }) {
   return (
     <div className="qa-card">

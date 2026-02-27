@@ -1,5 +1,7 @@
 import "./EmptyState.css";
 
+// Simple component to show when library is empty
+
 export default function EmptyState() {
   return (
     <div className="empty-state">

@@ -2,6 +2,9 @@ import { useState } from "react";
 import PreviewModal from "./PreviewModal";
 import "./PDFCard.css";
 
+// Component to display individual PDF details in the library, with options to preview, download, or delete.
+
+
 function formatBytes(bytes) {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
@@ -20,6 +23,7 @@ export default function PDFCard({ pdf, onDelete }) {
   const [deleting, setDeleting] = useState(false);
   const [previewing, setPreviewing] = useState(false);
 
+  // Handles the deletion of a PDF, showing a confirmation prompt and then calling the API to delete the PDF from the library.
   const handleDelete = async () => {
     setDeleting(true);
     try {
@@ -32,12 +36,13 @@ export default function PDFCard({ pdf, onDelete }) {
       setConfirming(false);
     }
   };
-
+  // Handles the download action by opening the PDF in a new browser tab, allowing the user to view or save the file.
   const handleDownload = (e) => {
     e.stopPropagation();
     window.open(`http://127.0.0.1:8000/api/pdfs/${pdf.id}/download`, "_blank");
   };
 
+  // Renders the PDF card with its details and action buttons, and conditionally shows the preview modal when the user clicks on the card.
   return (
     <>
       <div
@@ -47,7 +52,7 @@ export default function PDFCard({ pdf, onDelete }) {
         <div className="pdf-card-icon">PDF</div>
 
         <div className="pdf-card-body">
-          <h3 className="pdf-card-title" title={pdf.title}>{pdf.title}</h3>
+          <h3 className="pdf-card-title" title={pdf.filename}>{pdf.filename}</h3>
           <div className="pdf-card-meta">
             <span>{pdf.page_count} page{pdf.page_count !== 1 ? "s" : ""}</span>
             <span className="pdf-card-dot">·</span>

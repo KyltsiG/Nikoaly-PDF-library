@@ -1,12 +1,28 @@
 # Nikoäly PDF Library
 
-A personal, fully local PDF library with AI-powered search. Upload your documents, have them automatically analyzed and indexed, then find anything across your entire collection using keyword search, semantic search, or natural language Q&A — all running on your own machine with no internet required and no data leaving your computer.
+A fully local, AI-powered PDF library. Upload your documents, have them automatically analyzed and indexed, then find anything across your entire collection using keyword search, semantic search, or natural language Q&A — all running on your own machine with no internet required and no data leaving your computer.
 
 ---
 
-## What it does
+## Features
 
-Most PDF tools make you remember which file contains what. This library lets you search by **meaning**, not just filename. Upload a research paper, a textbook, or a scanned document — the application extracts the full text, indexes it, and makes it instantly searchable. In later phases, an on-device AI model answers questions directly from your documents, citing the exact source.
+### Phase 1 — Library
+- Upload PDFs via drag-and-drop or file browser
+- Automatic text extraction and metadata parsing (title, page count, file size)
+- Browse, preview, and delete documents
+- Download any PDF directly from the library
+- Dark-themed React UI
+
+### Phase 2 — Keyword Search
+- Full-text keyword search across all documents
+- Match count per document — results ranked by relevance
+- Highlighted excerpts showing where the match was found
+- Sort results by relevance, date, or name
+
+### Phase 3 — AI Search
+- **Semantic search** — finds documents by meaning, not just exact words
+- **Ask AI (Q&A)** — ask a natural language question, get a direct answer citing your documents
+- All AI runs fully on-device via Ollama — no API keys, no internet required
 
 ---
 
@@ -16,46 +32,22 @@ Most PDF tools make you remember which file contains what. This library lets you
 | Technology | Role |
 |---|---|
 | **Python 3.12** | Core backend language |
-| **FastAPI** | REST API framework — handles all HTTP endpoints, validation, and routing |
-| **SQLModel** | Database ORM — bridges Python models and SQLite with type safety |
-| **SQLite** | Embedded database — stores all PDF metadata and extracted text in a single local file |
-| **PyMuPDF** | PDF parsing — extracts text content and metadata from uploaded documents |
-| **Uvicorn** | ASGI server — runs the FastAPI application locally |
+| **FastAPI** | REST API framework |
+| **SQLModel** | Database ORM — bridges Python models and SQLite |
+| **SQLite** | Stores PDF metadata and extracted text |
+| **PyMuPDF** | PDF parsing and text extraction |
+| **ChromaDB** | Vector database for semantic search |
+| **Ollama** | Local AI runtime — runs models on-device |
+| **nomic-embed-text** | Embedding model for semantic search |
+| **Llama 3.2** | Language model for Q&A |
+| **Uvicorn** | ASGI server |
 
 ### Frontend
 | Technology | Role |
 |---|---|
-| **React 18** | UI framework — component-based interface |
+| **React 18** | UI framework |
 | **Vite** | Build tool and dev server |
-| **Plain CSS** | Custom styling with CSS variables — no UI framework dependency |
-
-### Planned (Phase 3+)
-| Technology | Role |
-|---|---|
-| **Ollama** | Local LLM runtime — runs AI models entirely on device |
-| **nomic-embed-text** | Embedding model — converts text to vectors for semantic search |
-| **Llama 3** | Language model — powers natural language Q&A over documents |
-| **ChromaDB** | Vector database — stores and queries embeddings for similarity search |
-
----
-
-## Features
-
-**Phase 1 — complete**
-- Upload PDFs via drag-and-drop or file browser
-- Automatic text extraction and metadata parsing (title, page count, file size)
-- Full text stored locally in SQLite for search
-- View, browse, and delete documents from the library
-- Dark-themed React UI
-
-**Phase 2 — in progress**
-- Keyword search using SQLite FTS5 full-text search
-- Relevant excerpt highlighting in search results
-
-**Phase 3 — planned**
-- Semantic search using local embeddings (finds meaning, not just keywords)
-- Natural language Q&A powered by local LLM (RAG pipeline)
-- All AI runs fully on-device via Ollama
+| **Plain CSS** | Custom styling with CSS variables |
 
 ---
 
@@ -65,25 +57,50 @@ Most PDF tools make you remember which file contains what. This library lets you
 [ React Frontend — localhost:5173 ]
              ↕  HTTP / REST
 [ FastAPI Backend — localhost:8000 ]
-        ↕                  ↕
-[ SQLite DB ]       [ Local Disk ]
-  metadata +          storage/pdfs/
-  full text           (PDF files)
-        ↕
-[ PyMuPDF Parser ]
-  text extraction
-  on upload
+      ↕                    ↕
+[ SQLite DB ]        [ Local Disk ]
+  metadata +           storage/pdfs/
+  full text            (PDF files)
+      ↕
+[ ChromaDB ]
+  vector embeddings
+  per page chunk
+      ↕
+[ Ollama ]
+  nomic-embed-text (embeddings)
+  llama3.2 (Q&A)
 ```
+
+---
+
+## Prerequisites
+
+- **Python 3.12**
+- **Node.js 18+** 
+- **Ollama**
+### Pull the required AI models
+
+After installing Ollama, open a terminal and run:
+
+```bash
+ollama pull nomic-embed-text
+ollama pull llama3.2
+```
+
+This downloads ~2.5GB total. Only needs to be done once.
 
 ---
 
 ## Getting Started
 
-### Prerequisites
-- Python 3.12
-- Node.js 18+
+### 1. Clone the repository
 
-### Backend
+```bash
+git clone https://github.com/KyltsiG/Nikoaly-PDF-library.git
+cd Nikoaly-PDF-library
+```
+
+### 2. Backend setup
 
 ```bash
 # Create and activate virtual environment
@@ -93,15 +110,26 @@ source venv/bin/activate     # macOS/Linux
 
 # Install dependencies
 pip install -r requirements.txt
+```
 
-# Start the server
+### 3. Start Ollama
+
+```bash
+ollama serve
+```
+
+Keep this running in a separate terminal.
+
+### 4. Start the backend
+
+```bash
 python -m uvicorn backend.main:app --reload
 ```
 
 API available at `http://localhost:8000`  
 Interactive API docs at `http://localhost:8000/docs`
 
-### Frontend
+### 5. Frontend setup
 
 ```bash
 cd frontend
@@ -113,52 +141,16 @@ UI available at `http://localhost:5173`
 
 ---
 
-## Project Structure
 
-```
-nikoaly-pdf-library/
-├── backend/
-│   ├── main.py                 # FastAPI app, lifespan, middleware
-│   ├── core/
-│   │   └── config.py           # Paths, constants, settings
-│   ├── db/
-│   │   └── database.py         # SQLite engine and session management
-│   ├── models/
-│   │   └── pdf.py              # Database models and API schemas
-│   ├── services/
-│   │   ├── pdf_parser.py       # PyMuPDF text extraction
-│   │   └── pdf_service.py      # Ingestion pipeline and CRUD operations
-│   └── api/routes/
-│       └── pdfs.py             # Upload, list, get, delete endpoints
-├── frontend/
-│   └── src/
-│       ├── App.jsx             # Root component, data fetching
-│       ├── pages/
-│       │   └── Library.jsx     # Main library view
-│       └── components/
-│           ├── UploadZone.jsx  # Drag-and-drop upload
-│           ├── PDFCard.jsx     # Individual document card
-│           └── EmptyState.jsx  # Empty library placeholder
-├── storage/
-│   ├── pdfs/                   # Uploaded PDF files (gitignored)
-│   └── library.db              # SQLite database (gitignored)
-├── tests/
-│   └── test_phase1.py
-├── requirements.txt
-└── README.md
-```
+## How It Works
 
----
+**Upload** — when a PDF is uploaded, PyMuPDF extracts the full text. The text is stored in SQLite for keyword search. It is also split into 200-word chunks per page and each chunk is embedded by `nomic-embed-text` via Ollama, with the page number stored in metadata. The vectors are saved in ChromaDB.
 
-## API Endpoints
+**Keyword search** — searches SQLite for exact text matches, counts occurrences, extracts a snippet around the first match, and identifies which page the match was found on.
 
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/health` | Health check |
-| `POST` | `/api/pdfs/upload` | Upload and ingest a PDF |
-| `GET` | `/api/pdfs/` | List all PDFs |
-| `GET` | `/api/pdfs/{id}` | Get a single PDF by ID |
-| `DELETE` | `/api/pdfs/{id}` | Delete a PDF |
+**Semantic search** — embeds the query using `nomic-embed-text`, queries ChromaDB for the most similar vectors using cosine similarity, and returns the matching PDFs ranked by similarity score with the matching page number.
+
+**Ask AI** — embeds the question, retrieves the top 3 most relevant chunks from ChromaDB, builds a strict prompt with those chunks as context, and calls `llama3.2` at low temperature to generate a focused answer citing the source documents.
 
 ---
 
@@ -166,10 +158,10 @@ nikoaly-pdf-library/
 
 **Fully local** — no cloud services, no API keys, no subscriptions. Every file, database, and AI model runs on your own hardware.
 
-**Privacy first** — your documents never leave your machine. Nothing is sent to external servers at any point.
+**Privacy first** — your documents never leave your machine at any point.
 
-**Incremental complexity** — built phase by phase so each stage is fully functional before the next is added. The app works at every phase, not just at the end.
+**Incremental complexity** — built phase by phase so the app works at every stage, not just at the end.
 
 ---
 
-*Built with Python, FastAPI, React, and a lot of SQLite.*
+*Built with Python, FastAPI, React, SQLite, ChromaDB, and Ollama.*
